@@ -60,4 +60,6 @@ local-data
 openai-compatible.config.ts
 certificates
 
-uploads/2025/
+# user uploads (ignore all contents but keep folder)
+uploads/**
+!uploads/.gitkeep
