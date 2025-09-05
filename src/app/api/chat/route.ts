@@ -9,6 +9,8 @@ import {
 } from "ai";
 import { createArtifactStreamProcessor } from "@/features/artifacts/stream-integration";
 import { buildArtifactsPrompt } from "@/features/artifacts/prompts";
+import { artifactRepository } from "lib/db/repository";
+import type { Artifact } from "@/features/artifacts/types";
 
 import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
 
     // Check if artifacts feature is enabled
     const enableArtifacts = process.env.ENABLE_ARTIFACTS === 'true';
+    const collectedArtifacts: Partial<Artifact>[] = [];
     
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
@@ -229,11 +232,11 @@ export async function POST(request: Request) {
         logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
 
         // Create artifact processor if enabled
-        let artifactProcessor: any = null;
         if (enableArtifacts) {
-          artifactProcessor = createArtifactStreamProcessor(id, '', {
+          createArtifactStreamProcessor(id, '', {
             onArtifactStart: (artifact) => {
               logger.info(`Artifact started: ${artifact.identifier}`);
+              collectedArtifacts.push(artifact);
               // Send artifact start event to client
               dataStream.write({
                 type: 'data-artifact-start' as const,
@@ -241,6 +244,11 @@ export async function POST(request: Request) {
               });
             },
             onArtifactChunk: (chunk) => {
+              // Update the last artifact with the chunk
+              const lastArtifact = collectedArtifacts[collectedArtifacts.length - 1];
+              if (lastArtifact) {
+                lastArtifact.content = (lastArtifact.content || '') + chunk;
+              }
               // Send artifact chunk to client
               dataStream.write({
                 type: 'data-artifact-chunk' as const,
@@ -254,7 +262,6 @@ export async function POST(request: Request) {
                 type: 'data-artifact-end' as const,
                 data: {},
               });
-              // Note: We'll save the artifact in onFinish
             }
           });
         }
@@ -283,14 +290,8 @@ export async function POST(request: Request) {
           },
         });
         
-        // If artifacts are enabled, intercept and process the stream
-        if (enableArtifacts && artifactProcessor) {
-          // TODO: We need to properly intercept the text stream here
-          // For now, merge as is - we'll enhance this in the next iteration
-          dataStream.merge(uiStream);
-        } else {
-          dataStream.merge(uiStream);
-        }
+        // Merge the UI stream
+        dataStream.merge(uiStream);
       },
 
       generateId: generateUUID,
@@ -322,6 +323,28 @@ export async function POST(request: Request) {
           agentRepository.updateAgent(agent.id, session.user.id, {
             updatedAt: new Date(),
           } as any);
+        }
+
+        // Save artifacts to database if any were collected
+        if (enableArtifacts && collectedArtifacts.length > 0) {
+          for (const artifact of collectedArtifacts) {
+            if (artifact.identifier && artifact.type && artifact.content) {
+              try {
+                await artifactRepository.create({
+                  conversationId: thread!.id,
+                  messageId: responseMessage.id,
+                  identifier: artifact.identifier,
+                  type: artifact.type,
+                  title: artifact.title,
+                  language: artifact.language,
+                  content: artifact.content,
+                });
+                logger.info(`Saved artifact: ${artifact.identifier}`);
+              } catch (error) {
+                logger.error(`Failed to save artifact: ${artifact.identifier}`, error);
+              }
+            }
+          }
         }
       },
       onError: handleError,

@@ -13,6 +13,7 @@ import {
   varchar,
   index,
   bigint,
+  integer,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -335,6 +336,26 @@ export const FileAttachmentSchema = pgTable("file_attachment", {
   index("file_attachment_message_id_idx").on(table.messageId),
 ]);
 
+export const ArtifactSchema = pgTable("artifacts", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  conversationId: varchar("conversation_id", { length: 255 }).notNull(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  identifier: varchar("identifier", { length: 255 }).notNull(),
+  version: integer("version").notNull().default(1),
+  type: varchar("type", { length: 100 }).notNull(),
+  title: varchar("title", { length: 500 }),
+  language: varchar("language", { length: 50 }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  unique().on(table.conversationId, table.identifier, table.version),
+  index("artifacts_conversation_identifier_idx").on(table.conversationId, table.identifier),
+  index("artifacts_message_id_idx").on(table.messageId),
+  index("artifacts_type_idx").on(table.type),
+  index("artifacts_created_at_idx").on(table.createdAt),
+]);
+
 export type McpServerEntity = typeof McpServerSchema.$inferSelect;
 export type ChatThreadEntity = typeof ChatThreadSchema.$inferSelect;
 export type ChatMessageEntity = typeof ChatMessageSchema.$inferSelect;
@@ -350,3 +371,4 @@ export type ArchiveEntity = typeof ArchiveSchema.$inferSelect;
 export type ArchiveItemEntity = typeof ArchiveItemSchema.$inferSelect;
 export type BookmarkEntity = typeof BookmarkSchema.$inferSelect;
 export type FileAttachmentEntity = typeof FileAttachmentSchema.$inferSelect;
+export type ArtifactEntity = typeof ArtifactSchema.$inferSelect;
