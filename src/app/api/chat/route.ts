@@ -7,6 +7,8 @@ import {
   streamText,
   UIMessage,
 } from "ai";
+import { createArtifactStreamProcessor } from "@/features/artifacts/stream-integration";
+import { buildArtifactsPrompt } from "@/features/artifacts/prompts";
 
 import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 
@@ -118,6 +120,9 @@ export async function POST(request: Request) {
       chatModel: chatModel,
     };
 
+    // Check if artifacts feature is enabled
+    const enableArtifacts = process.env.ENABLE_ARTIFACTS === 'true';
+    
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
         const mcpClients = await mcpClientsManager.getClients();
@@ -189,6 +194,7 @@ export async function POST(request: Request) {
           buildUserSystemPrompt(session.user, userPreferences, agent),
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
+          enableArtifacts && buildArtifactsPrompt(true),
         );
 
         const vercelAITooles = safe({ ...MCP_TOOLS, ...WORKFLOW_TOOLS })
@@ -222,6 +228,37 @@ export async function POST(request: Request) {
         );
         logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
 
+        // Create artifact processor if enabled
+        let artifactProcessor: any = null;
+        if (enableArtifacts) {
+          artifactProcessor = createArtifactStreamProcessor(id, '', {
+            onArtifactStart: (artifact) => {
+              logger.info(`Artifact started: ${artifact.identifier}`);
+              // Send artifact start event to client
+              dataStream.write({
+                type: 'data-artifact-start' as const,
+                data: artifact,
+              });
+            },
+            onArtifactChunk: (chunk) => {
+              // Send artifact chunk to client
+              dataStream.write({
+                type: 'data-artifact-chunk' as const,
+                data: { chunk },
+              });
+            },
+            onArtifactEnd: () => {
+              logger.info('Artifact completed');
+              // Send artifact end event to client
+              dataStream.write({
+                type: 'data-artifact-end' as const,
+                data: {},
+              });
+              // Note: We'll save the artifact in onFinish
+            }
+          });
+        }
+        
         const result = streamText({
           model,
           system: systemPrompt,
@@ -233,17 +270,27 @@ export async function POST(request: Request) {
           toolChoice: "auto",
           abortSignal: request.signal,
         });
+        
         result.consumeStream();
-        dataStream.merge(
-          result.toUIMessageStream({
-            messageMetadata: ({ part }) => {
-              if (part.type == "finish") {
-                metadata.usage = part.totalUsage;
-                return metadata;
-              }
-            },
-          }),
-        );
+        
+        // Create the UI stream
+        const uiStream = result.toUIMessageStream({
+          messageMetadata: ({ part }) => {
+            if (part.type == "finish") {
+              metadata.usage = part.totalUsage;
+              return metadata;
+            }
+          },
+        });
+        
+        // If artifacts are enabled, intercept and process the stream
+        if (enableArtifacts && artifactProcessor) {
+          // TODO: We need to properly intercept the text stream here
+          // For now, merge as is - we'll enhance this in the next iteration
+          dataStream.merge(uiStream);
+        } else {
+          dataStream.merge(uiStream);
+        }
       },
 
       generateId: generateUUID,
