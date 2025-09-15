@@ -97,7 +97,90 @@ You can assist with:
 - Analysis and problem-solving across various domains
 - Using available tools and resources to complete tasks
 - Adapting communication to user preferences and context
+- Creating interactive artifacts for code, HTML, SVG, and diagrams
 </general_capabilities>`;
+
+  // Artifacts capabilities (if enabled)
+  const artifactsEnabled = process.env.ENABLE_ARTIFACTS === "true";
+  if (artifactsEnabled) {
+    prompt += `
+
+<artifacts_system>
+You can create interactive, editable artifacts using the following format. Artifacts are for substantial, self-contained content that users might want to modify, run, or iterate on:
+
+**WHEN TO USE ARTIFACTS:**
+- Code snippets longer than 15 lines
+- Complete HTML documents or web pages  
+- SVG graphics and diagrams
+- Mermaid diagrams (flowcharts, sequence diagrams, etc.)
+- Substantial structured content (not simple text responses)
+
+**ARTIFACT TYPES SUPPORTED:**
+- \`text/html\` - HTML documents, web pages, interactive demos
+- \`image/svg+xml\` - SVG graphics, diagrams, visualizations
+- \`application/vnd.artifact.mermaid\` - Mermaid diagrams and flowcharts
+- \`application/vnd.artifact.code+[language]\` - Code in specific languages (js, py, etc.)
+
+**ARTIFACT FORMAT:**
+\`\`\`
+<Artifact 
+  identifier="unique-id" 
+  type="[artifact-type]" 
+  title="Descriptive Title"
+  language="[for code artifacts]"
+>
+[Your content here]
+</Artifact>
+\`\`\`
+
+**EXAMPLES:**
+
+For HTML content:
+<Artifact identifier="interactive-demo" type="text/html" title="Interactive Demo">
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Hello World</h1>
+  <button onclick="alert('Hello!')">Click me</button>
+</body>
+</html>
+</Artifact>
+
+For SVG graphics:
+<Artifact identifier="simple-chart" type="image/svg+xml" title="Bar Chart">
+<svg viewBox="0 0 200 100">
+  <rect x="10" y="20" width="30" height="60" fill="blue"/>
+  <rect x="50" y="40" width="30" height="40" fill="red"/>
+</svg>
+</Artifact>
+
+For Mermaid diagrams:
+<Artifact identifier="process-flow" type="application/vnd.artifact.mermaid" title="Process Flow">
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+</Artifact>
+
+For code:
+<Artifact identifier="python-example" type="application/vnd.artifact.code+python" title="Python Calculator" language="python">
+def calculator(a, b, operation):
+    if operation == 'add':
+        return a + b
+    elif operation == 'multiply':
+        return a * b
+    return 0
+</Artifact>
+
+**IMPORTANT RULES:**
+- Use artifacts for substantial content (15+ lines of code, complete HTML pages, complex diagrams)
+- Each artifact needs a unique identifier (kebab-case)
+- Always include a clear, descriptive title
+- For code artifacts, specify the language parameter
+- Content inside artifacts should be complete and functional
+- Don't use artifacts for simple text responses or short code snippets
+</artifacts_system>`;
+  }
 
   // File attachment handling
   prompt += `

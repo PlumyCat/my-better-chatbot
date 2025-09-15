@@ -9,9 +9,9 @@ const logger = globalLogger.withDefaults({
 });
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     identifier: string;
-  };
+  }>;
 }
 
 /**
@@ -25,33 +25,41 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { identifier } = context.params;
+    const { identifier } = await context.params;
     const { searchParams } = new URL(request.url);
-    const conversationId = searchParams.get('conversationId');
-    const versionParam = searchParams.get('version');
+    const conversationId = searchParams.get("conversationId");
+    const versionParam = searchParams.get("version");
     const version = versionParam ? parseInt(versionParam, 10) : undefined;
 
     if (!conversationId) {
-      return Response.json({ error: 'conversationId is required' }, { status: 400 });
+      return Response.json(
+        { error: "conversationId is required" },
+        { status: 400 },
+      );
     }
 
     if (versionParam && (isNaN(version!) || version! < 1)) {
-      return Response.json({ error: 'version must be a positive integer' }, { status: 400 });
+      return Response.json(
+        { error: "version must be a positive integer" },
+        { status: 400 },
+      );
     }
 
     // TODO: Add authorization check to ensure user owns the conversation
 
     const artifact = await artifactRepository.getByIdentifier(
-      conversationId, 
-      identifier, 
-      version
+      conversationId,
+      identifier,
+      version,
     );
 
     if (!artifact) {
-      return Response.json({ error: 'Artifact not found' }, { status: 404 });
+      return Response.json({ error: "Artifact not found" }, { status: 404 });
     }
 
-    logger.info(`Retrieved artifact: ${identifier} (version ${artifact.version})`);
+    logger.info(
+      `Retrieved artifact: ${identifier} (version ${artifact.version})`,
+    );
 
     return Response.json({ artifact });
   } catch (error: any) {
@@ -71,18 +79,24 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { identifier } = context.params;
+    const { identifier } = await context.params;
     const { searchParams } = new URL(request.url);
-    const conversationId = searchParams.get('conversationId');
-    const versionParam = searchParams.get('version');
+    const conversationId = searchParams.get("conversationId");
+    const versionParam = searchParams.get("version");
     const version = versionParam ? parseInt(versionParam, 10) : undefined;
 
     if (!conversationId) {
-      return Response.json({ error: 'conversationId is required' }, { status: 400 });
+      return Response.json(
+        { error: "conversationId is required" },
+        { status: 400 },
+      );
     }
 
     if (versionParam && (isNaN(version!) || version! < 1)) {
-      return Response.json({ error: 'version must be a positive integer' }, { status: 400 });
+      return Response.json(
+        { error: "version must be a positive integer" },
+        { status: 400 },
+      );
     }
 
     // TODO: Add authorization check to ensure user owns the conversation
@@ -91,20 +105,25 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const artifact = await artifactRepository.getByIdentifier(
       conversationId,
       identifier,
-      version
+      version,
     );
 
     if (!artifact) {
-      return Response.json({ error: 'Artifact not found' }, { status: 404 });
+      return Response.json({ error: "Artifact not found" }, { status: 404 });
     }
 
     const deleted = await artifactRepository.deleteById(artifact.id);
 
     if (deleted) {
-      logger.info(`Deleted artifact: ${identifier} (version ${artifact.version})`);
-      return Response.json({ message: 'Artifact deleted successfully' });
+      logger.info(
+        `Deleted artifact: ${identifier} (version ${artifact.version})`,
+      );
+      return Response.json({ message: "Artifact deleted successfully" });
     } else {
-      return Response.json({ error: 'Failed to delete artifact' }, { status: 500 });
+      return Response.json(
+        { error: "Failed to delete artifact" },
+        { status: 500 },
+      );
     }
   } catch (error: any) {
     logger.error("Error deleting artifact:", error);

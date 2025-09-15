@@ -42,6 +42,9 @@ import dynamic from "next/dynamic";
 import { useMounted } from "@/hooks/use-mounted";
 import { getStorageManager } from "lib/browser-stroage";
 import { AnimatePresence, motion } from "framer-motion";
+import { ArtifactPanel } from "@/features/artifacts/components/ArtifactPanel";
+// import { createArtifactStreamProcessor } from "@/features/artifacts/stream-integration";
+import { useArtifactPanelStore } from "@/features/artifacts/store";
 
 type Props = {
   threadId: string;
@@ -66,6 +69,8 @@ firstTimeStorage.set(false);
 export default function ChatBot({ threadId, initialMessages }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+
+  const { isOpen: isArtifactPanelOpen } = useArtifactPanelStore();
 
   const [
     appStoreMutate,
@@ -162,7 +167,7 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
     messages: initialMessages,
     generateId: generateUUID,
     experimental_throttle: 100,
-    onFinish,
+    onFinish: onFinish,
   });
   const [isDeleteThreadPopupOpen, setIsDeleteThreadPopupOpen] = useState(false);
 
@@ -292,6 +297,15 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
     };
   }, [threadId]);
 
+  // Set current conversation ID in artifacts store
+  const { setCurrentConversationId } = useArtifactPanelStore();
+  useEffect(() => {
+    setCurrentConversationId(threadId);
+    return () => {
+      setCurrentConversationId(null);
+    };
+  }, [threadId, setCurrentConversationId]);
+
   useEffect(() => {
     if (pendingThreadMention && threadId) {
       appStoreMutate((prev) => ({
@@ -346,93 +360,124 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
 
   return (
     <>
+      {isArtifactPanelOpen && (
+        <style jsx global>{`
+          .group\\/message {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .group\\/message > * {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+        `}</style>
+      )}
       {particle}
-      <div
-        className={cn(
-          emptyMessage && "justify-center pb-24",
-          "flex flex-col min-w-0 relative h-full z-40",
-        )}
-      >
-        {emptyMessage ? (
-          <ChatGreeting />
-        ) : (
-          <>
-            <div
-              className={"flex flex-col gap-2 overflow-y-auto py-6 z-10"}
-              ref={containerRef}
-              onScroll={handleScroll}
-            >
-              {messages.map((message, index) => {
-                const isLastMessage = messages.length - 1 === index;
-                return (
-                  <PreviewMessage
-                    threadId={threadId}
-                    messageIndex={index}
-                    prevMessage={messages[index - 1]}
-                    key={message.id}
-                    message={message}
-                    status={status}
-                    addToolResult={addToolResult}
-                    isLoading={isLoading || isPendingToolCall}
-                    isLastMessage={isLastMessage}
-                    setMessages={setMessages}
-                    sendMessage={sendMessage}
-                    className={
-                      isLastMessage &&
-                      message.role != "user" &&
-                      !space &&
-                      message.parts.length > 1
-                        ? "min-h-[calc(55dvh-40px)]"
-                        : ""
-                    }
-                  />
-                );
-              })}
-              {space && (
-                <>
-                  <div className="w-full mx-auto max-w-3xl px-6 relative">
-                    <div className={space == "space" ? "opacity-0" : ""}>
-                      <Think />
-                    </div>
-                  </div>
-                  <div className="min-h-[calc(55dvh-56px)]" />
-                </>
-              )}
-
-              {error && <ErrorMessage error={error} />}
-              <div className="min-w-0 min-h-52" />
-            </div>
-          </>
-        )}
-
+      <div className="flex h-full">
         <div
-          className={clsx(
-            messages.length && "absolute bottom-14",
-            "w-full z-10",
+          className={cn(
+            emptyMessage && "justify-center pb-24",
+            "flex flex-col min-w-0 relative h-full z-40 overflow-hidden",
+            isArtifactPanelOpen ? "w-1/2" : "flex-1",
           )}
+          style={
+            isArtifactPanelOpen
+              ? {
+                  maxWidth: "50vw",
+                  width: "50vw",
+                  boxSizing: "border-box",
+                }
+              : {}
+          }
         >
-          <div className="max-w-3xl mx-auto relative flex justify-center items-center -top-2">
-            <ScrollToBottomButton
-              show={!isAtBottom && messages.length > 0}
-              onClick={scrollToBottom}
+          {emptyMessage ? (
+            <ChatGreeting />
+          ) : (
+            <>
+              <div
+                className={"flex flex-col gap-2 overflow-y-auto py-6 z-10"}
+                ref={containerRef}
+                onScroll={handleScroll}
+                style={{
+                  maxWidth: "100%",
+                  width: "100%",
+                  paddingRight: isArtifactPanelOpen ? "16px" : "0px",
+                }}
+              >
+                {messages.map((message, index) => {
+                  const isLastMessage = messages.length - 1 === index;
+                  return (
+                    <PreviewMessage
+                      threadId={threadId}
+                      messageIndex={index}
+                      prevMessage={messages[index - 1]}
+                      key={message.id}
+                      message={message}
+                      status={status}
+                      addToolResult={addToolResult}
+                      isLoading={isLoading || isPendingToolCall}
+                      isLastMessage={isLastMessage}
+                      setMessages={setMessages}
+                      sendMessage={sendMessage}
+                      className={cn(
+                        isLastMessage &&
+                          message.role != "user" &&
+                          !space &&
+                          message.parts.length > 1
+                          ? "min-h-[calc(55dvh-40px)]"
+                          : "",
+                        "w-full max-w-full",
+                      )}
+                    />
+                  );
+                })}
+                {space && (
+                  <>
+                    <div className="w-full mx-auto max-w-3xl px-6 relative">
+                      <div className={space == "space" ? "opacity-0" : ""}>
+                        <Think />
+                      </div>
+                    </div>
+                    <div className="min-h-[calc(55dvh-56px)]" />
+                  </>
+                )}
+
+                {error && <ErrorMessage error={error} />}
+                <div className="min-w-0 min-h-52" />
+              </div>
+            </>
+          )}
+
+          <div
+            className={clsx(
+              messages.length && "absolute bottom-14",
+              "w-full z-10",
+            )}
+          >
+            <div className="max-w-3xl mx-auto relative flex justify-center items-center -top-2">
+              <ScrollToBottomButton
+                show={!isAtBottom && messages.length > 0}
+                onClick={scrollToBottom}
+              />
+            </div>
+
+            <PromptInput
+              input={input}
+              threadId={threadId}
+              sendMessage={sendMessage}
+              setInput={setInput}
+              isLoading={isLoading || isPendingToolCall}
+              onStop={stop}
+              onFocus={isFirstTime ? undefined : handleFocus}
             />
           </div>
-
-          <PromptInput
-            input={input}
+          <DeleteThreadPopup
             threadId={threadId}
-            sendMessage={sendMessage}
-            setInput={setInput}
-            isLoading={isLoading || isPendingToolCall}
-            onStop={stop}
-            onFocus={isFirstTime ? undefined : handleFocus}
+            onClose={() => setIsDeleteThreadPopupOpen(false)}
+            open={isDeleteThreadPopupOpen}
           />
         </div>
-        <DeleteThreadPopup
-          threadId={threadId}
-          onClose={() => setIsDeleteThreadPopupOpen(false)}
-          open={isDeleteThreadPopupOpen}
-        />
+        <ArtifactPanel />
       </div>
     </>
   );

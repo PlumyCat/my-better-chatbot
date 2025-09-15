@@ -1,5 +1,6 @@
-import { create } from 'zustand';
-import type { Artifact } from './types';
+import { create } from "zustand";
+import { useMemo } from "react";
+import type { Artifact } from "./types";
 
 export interface ArtifactPanelState {
   isOpen: boolean;
@@ -8,6 +9,8 @@ export interface ArtifactPanelState {
   artifacts: Artifact[];
   loading: boolean;
   error: string | null;
+  currentArtifact: Artifact | null;
+  currentConversationId: string | null;
 }
 
 interface ArtifactPanelActions {
@@ -15,6 +18,7 @@ interface ArtifactPanelActions {
   closePanel: () => void;
   togglePanel: () => void;
   selectArtifact: (artifactId: string, version?: number) => void;
+  setCurrentArtifact: (artifact: Artifact | null) => void;
   addArtifact: (artifact: Artifact) => void;
   updateArtifact: (artifact: Artifact) => void;
   setArtifacts: (artifacts: Artifact[]) => void;
@@ -22,6 +26,7 @@ interface ArtifactPanelActions {
   setError: (error: string | null) => void;
   clearError: () => void;
   reset: () => void;
+  setCurrentConversationId: (conversationId: string | null) => void;
 }
 
 export type ArtifactPanelStore = ArtifactPanelState & ArtifactPanelActions;
@@ -33,31 +38,60 @@ const initialState: ArtifactPanelState = {
   artifacts: [],
   loading: false,
   error: null,
+  currentArtifact: null,
+  currentConversationId: null,
 };
 
 export const useArtifactPanelStore = create<ArtifactPanelStore>((set, get) => ({
   ...initialState,
 
   openPanel: () => set({ isOpen: true }),
-  
+
   closePanel: () => set({ isOpen: false }),
-  
+
   togglePanel: () => set((state) => ({ isOpen: !state.isOpen })),
-  
+
   selectArtifact: (artifactId: string, version?: number) => {
-    set({ 
+    const { artifacts } = get();
+    const artifact = artifacts.find((a) => {
+      if (version) {
+        return a.identifier === artifactId && a.version === version;
+      }
+      // Get latest version if no version specified
+      const allVersions = artifacts.filter((a) => a.identifier === artifactId);
+      const latest = allVersions.reduce(
+        (latest, current) =>
+          current.version > latest.version ? current : latest,
+        allVersions[0],
+      );
+      return a === latest;
+    });
+
+    set({
       selectedArtifactId: artifactId,
       selectedVersion: version || null,
+      currentArtifact: artifact || null,
       isOpen: true, // Auto-open when selecting an artifact
     });
   },
-  
+
+  setCurrentArtifact: (artifact: Artifact | null) => {
+    set({
+      currentArtifact: artifact,
+      isOpen: artifact !== null,
+      selectedArtifactId: artifact?.identifier || null,
+      selectedVersion: artifact?.version || null,
+    });
+  },
+
   addArtifact: (artifact: Artifact) => {
     const { artifacts } = get();
     const existingIndex = artifacts.findIndex(
-      (a) => a.identifier === artifact.identifier && a.conversationId === artifact.conversationId
+      (a) =>
+        a.identifier === artifact.identifier &&
+        a.conversationId === artifact.conversationId,
     );
-    
+
     if (existingIndex >= 0) {
       // Update existing artifact (higher version)
       const updatedArtifacts = [...artifacts];
@@ -69,41 +103,45 @@ export const useArtifactPanelStore = create<ArtifactPanelStore>((set, get) => ({
       // Add new artifact
       set({ artifacts: [...artifacts, artifact] });
     }
-    
+
     // Auto-open panel and select the new/updated artifact
-    set({ 
+    set({
       isOpen: true,
       selectedArtifactId: artifact.identifier,
       selectedVersion: artifact.version,
     });
   },
-  
+
   updateArtifact: (artifact: Artifact) => {
     const { artifacts } = get();
-    const updatedArtifacts = artifacts.map((a) => 
-      a.id === artifact.id ? artifact : a
+    const updatedArtifacts = artifacts.map((a) =>
+      a.id === artifact.id ? artifact : a,
     );
     set({ artifacts: updatedArtifacts });
   },
-  
+
   setArtifacts: (artifacts: Artifact[]) => {
     set({ artifacts });
   },
-  
+
   setLoading: (loading: boolean) => {
     set({ loading });
   },
-  
+
   setError: (error: string | null) => {
     set({ error });
   },
-  
+
   clearError: () => {
     set({ error: null });
   },
-  
+
   reset: () => {
     set(initialState);
+  },
+
+  setCurrentConversationId: (conversationId: string | null) => {
+    set({ currentConversationId: conversationId });
   },
 }));
 
@@ -138,6 +176,20 @@ export const useArtifacts = () => {
   };
 };
 
+export const useCurrentConversationArtifacts = () => {
+  const currentConversationId = useArtifactPanelStore(
+    (state) => state.currentConversationId,
+  );
+  const artifacts = useArtifactPanelStore((state) => state.artifacts);
+
+  return useMemo(() => {
+    if (!currentConversationId) return [];
+    return artifacts.filter(
+      (artifact) => artifact.conversationId === currentConversationId,
+    );
+  }, [artifacts, currentConversationId]);
+};
+
 // Get specific artifact by identifier and version
 export const useArtifact = (identifier: string, version?: number) => {
   return useArtifactPanelStore((state) => {
@@ -146,13 +198,17 @@ export const useArtifact = (identifier: string, version?: number) => {
         return a.identifier === identifier && a.version === version;
       }
       // Get latest version if no version specified
-      const allVersions = state.artifacts.filter((a) => a.identifier === identifier);
-      const latest = allVersions.reduce((latest, current) => 
-        current.version > latest.version ? current : latest
-      , allVersions[0]);
+      const allVersions = state.artifacts.filter(
+        (a) => a.identifier === identifier,
+      );
+      const latest = allVersions.reduce(
+        (latest, current) =>
+          current.version > latest.version ? current : latest,
+        allVersions[0],
+      );
       return a === latest;
     });
-    
+
     return artifact || null;
   });
 };

@@ -40,8 +40,8 @@ export class ArtifactRepository {
       .where(
         and(
           eq(ArtifactSchema.conversationId, input.conversationId),
-          eq(ArtifactSchema.identifier, input.identifier)
-        )
+          eq(ArtifactSchema.identifier, input.identifier),
+        ),
       );
 
     const latestVersion = latestVersionQuery[0]?.version || 0;
@@ -64,23 +64,27 @@ export class ArtifactRepository {
   async getByIdentifier(
     conversationId: string,
     identifier: string,
-    version?: number
+    version?: number,
   ): Promise<ArtifactEntity | null> {
-    let query = this.db
+    const query = this.db
       .select()
       .from(ArtifactSchema)
       .where(
         and(
           eq(ArtifactSchema.conversationId, conversationId),
-          eq(ArtifactSchema.identifier, identifier)
-        )
+          eq(ArtifactSchema.identifier, identifier),
+        ),
       );
 
     if (version) {
-      const results = await query.where(eq(ArtifactSchema.version, version)).limit(1);
+      const results = await query
+        .where(eq(ArtifactSchema.version, version))
+        .limit(1);
       return results[0] || null;
     } else {
-      const results = await query.orderBy(desc(ArtifactSchema.version)).limit(1);
+      const results = await query
+        .orderBy(desc(ArtifactSchema.version))
+        .limit(1);
       return results[0] || null;
     }
   }
@@ -90,7 +94,7 @@ export class ArtifactRepository {
    */
   async getAllVersions(
     conversationId: string,
-    identifier: string
+    identifier: string,
   ): Promise<ArtifactEntity[]> {
     return await this.db
       .select()
@@ -98,8 +102,8 @@ export class ArtifactRepository {
       .where(
         and(
           eq(ArtifactSchema.conversationId, conversationId),
-          eq(ArtifactSchema.identifier, identifier)
-        )
+          eq(ArtifactSchema.identifier, identifier),
+        ),
       )
       .orderBy(desc(ArtifactSchema.version));
   }
@@ -107,16 +111,18 @@ export class ArtifactRepository {
   /**
    * List all artifacts in a conversation with their latest versions
    */
-  async listByConversation(conversationId: string): Promise<ArtifactVersionInfo[]> {
+  async listByConversation(
+    conversationId: string,
+  ): Promise<ArtifactVersionInfo[]> {
     const latestVersions = this.db
       .select({
         identifier: ArtifactSchema.identifier,
-        maxVersion: max(ArtifactSchema.version).as('max_version'),
+        maxVersion: max(ArtifactSchema.version).as("max_version"),
       })
       .from(ArtifactSchema)
       .where(eq(ArtifactSchema.conversationId, conversationId))
       .groupBy(ArtifactSchema.identifier)
-      .as('latest_versions');
+      .as("latest_versions");
 
     const results = await this.db
       .select({
@@ -131,13 +137,13 @@ export class ArtifactRepository {
         latestVersions,
         and(
           eq(ArtifactSchema.identifier, latestVersions.identifier),
-          eq(ArtifactSchema.version, latestVersions.maxVersion)
-        )
+          eq(ArtifactSchema.version, latestVersions.maxVersion),
+        ),
       )
       .where(eq(ArtifactSchema.conversationId, conversationId))
       .orderBy(desc(ArtifactSchema.createdAt));
 
-    return results.map(row => ({
+    return results.map((row) => ({
       identifier: row.identifier,
       latestVersion: row.latestVersion,
       type: row.type,
@@ -195,15 +201,18 @@ export class ArtifactRepository {
   /**
    * Get latest version number for an identifier
    */
-  async getLatestVersion(conversationId: string, identifier: string): Promise<number> {
+  async getLatestVersion(
+    conversationId: string,
+    identifier: string,
+  ): Promise<number> {
     const result = await this.db
       .select({ version: max(ArtifactSchema.version) })
       .from(ArtifactSchema)
       .where(
         and(
           eq(ArtifactSchema.conversationId, conversationId),
-          eq(ArtifactSchema.identifier, identifier)
-        )
+          eq(ArtifactSchema.identifier, identifier),
+        ),
       );
 
     return result[0]?.version || 0;

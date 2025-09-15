@@ -9,9 +9,9 @@ const logger = globalLogger.withDefaults({
 });
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     identifier: string;
-  };
+  }>;
 }
 
 /**
@@ -25,18 +25,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { identifier } = context.params;
+    const { identifier } = await context.params;
     const { searchParams } = new URL(request.url);
-    const conversationId = searchParams.get('conversationId');
-    const versionParam = searchParams.get('version');
+    const conversationId = searchParams.get("conversationId");
+    const versionParam = searchParams.get("version");
     const version = versionParam ? parseInt(versionParam, 10) : undefined;
 
     if (!conversationId) {
-      return Response.json({ error: 'conversationId is required' }, { status: 400 });
+      return Response.json(
+        { error: "conversationId is required" },
+        { status: 400 },
+      );
     }
 
     if (versionParam && (isNaN(version!) || version! < 1)) {
-      return Response.json({ error: 'version must be a positive integer' }, { status: 400 });
+      return Response.json(
+        { error: "version must be a positive integer" },
+        { status: 400 },
+      );
     }
 
     // TODO: Add authorization check to ensure user owns the conversation
@@ -44,11 +50,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const artifact = await artifactRepository.getByIdentifier(
       conversationId,
       identifier,
-      version
+      version,
     );
 
     if (!artifact) {
-      return Response.json({ error: 'Artifact not found' }, { status: 404 });
+      return Response.json({ error: "Artifact not found" }, { status: 404 });
     }
 
     // Determine file extension and MIME type based on artifact type
@@ -56,37 +62,39 @@ export async function POST(request: NextRequest, context: RouteContext) {
     let mimeType: string;
 
     switch (artifact.type) {
-      case 'text/html':
-        fileExtension = 'html';
-        mimeType = 'text/html';
+      case "text/html":
+        fileExtension = "html";
+        mimeType = "text/html";
         break;
-      case 'image/svg+xml':
-        fileExtension = 'svg';
-        mimeType = 'image/svg+xml';
+      case "image/svg+xml":
+        fileExtension = "svg";
+        mimeType = "image/svg+xml";
         break;
-      case 'application/.artifacts.mermaid':
-        fileExtension = 'mmd';
-        mimeType = 'text/plain';
+      case "application/.artifacts.mermaid":
+        fileExtension = "mmd";
+        mimeType = "text/plain";
         break;
-      case 'application/.artifacts.code':
-        fileExtension = artifact.language || 'txt';
-        mimeType = 'text/plain';
+      case "application/.artifacts.code":
+        fileExtension = artifact.language || "txt";
+        mimeType = "text/plain";
         break;
       default:
-        fileExtension = 'txt';
-        mimeType = 'text/plain';
+        fileExtension = "txt";
+        mimeType = "text/plain";
     }
 
     const filename = `${artifact.identifier}-v${artifact.version}.${fileExtension}`;
 
-    logger.info(`Exporting artifact: ${identifier} (version ${artifact.version}) as ${filename}`);
+    logger.info(
+      `Exporting artifact: ${identifier} (version ${artifact.version}) as ${filename}`,
+    );
 
     return new Response(artifact.content, {
       status: 200,
       headers: {
-        'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': artifact.content.length.toString(),
+        "Content-Type": mimeType,
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": artifact.content.length.toString(),
       },
     });
   } catch (error: any) {

@@ -19,6 +19,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { Button } from "ui/button";
 import { Markdown } from "./markdown";
+import { MessageContent } from "./message-content";
 import { cn, safeJSONParse, truncateString } from "lib/utils";
 import JsonView from "ui/json-view";
 import { useMemo, useState, memo, useEffect, useRef, useCallback } from "react";
@@ -54,7 +55,13 @@ import {
   getShortcutKeyList,
   isShortcutEvent,
 } from "lib/keyboard-shortcuts";
-import { FileIcon, FileTextIcon, ImageIcon, FileVideoIcon, FileMusicIcon } from "lucide-react";
+import {
+  FileIcon,
+  FileTextIcon,
+  ImageIcon,
+  FileVideoIcon,
+  FileMusicIcon,
+} from "lucide-react";
 
 import { WorkflowInvocation } from "./tool-invocation/workflow-invocation";
 import dynamic from "next/dynamic";
@@ -74,7 +81,9 @@ const isFileReference = (text: string): boolean => {
   return FILE_REFERENCE_PATTERN.test(text.trim());
 };
 
-const parseFileReference = (text: string): { filename: string; fileId: string } | null => {
+const parseFileReference = (
+  text: string,
+): { filename: string; fileId: string } | null => {
   const match = text.trim().match(FILE_REFERENCE_PATTERN);
   if (match) {
     return { filename: match[1], fileId: match[2] };
@@ -83,32 +92,32 @@ const parseFileReference = (text: string): { filename: string; fileId: string } 
 };
 
 const getFileIcon = (filename: string) => {
-  const extension = filename.split('.').pop()?.toLowerCase();
-  
+  const extension = filename.split(".").pop()?.toLowerCase();
+
   switch (extension) {
-    case 'jpg':
-    case 'jpeg':
-    case 'png':
-    case 'gif':
-    case 'svg':
-    case 'webp':
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "svg":
+    case "webp":
       return ImageIcon;
-    case 'mp4':
-    case 'avi':
-    case 'mov':
-    case 'wmv':
-    case 'flv':
+    case "mp4":
+    case "avi":
+    case "mov":
+    case "wmv":
+    case "flv":
       return FileVideoIcon;
-    case 'mp3':
-    case 'wav':
-    case 'ogg':
-    case 'aac':
+    case "mp3":
+    case "wav":
+    case "ogg":
+    case "aac":
       return FileMusicIcon;
-    case 'txt':
-    case 'md':
-    case 'doc':
-    case 'docx':
-    case 'pdf':
+    case "txt":
+    case "md":
+    case "doc":
+    case "docx":
+    case "pdf":
       return FileTextIcon;
     default:
       return FileIcon;
@@ -236,9 +245,9 @@ export const UserMessagePart = memo(
             (() => {
               const fileRef = parseFileReference(part.text);
               if (!fileRef) return null;
-              
+
               const FileIcon = getFileIcon(fileRef.filename);
-              
+
               return (
                 <div className="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border/50 backdrop-blur-sm">
                   <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg">
@@ -432,7 +441,7 @@ export const AssistMessagePart = memo(function AssistMessagePart({
           "opacity-50 border border-destructive bg-card rounded-lg": isError,
         })}
       >
-        <Markdown>{part.text}</Markdown>
+        <MessageContent content={part.text} />
       </div>
       {showActions && (
         <div className="flex w-full">

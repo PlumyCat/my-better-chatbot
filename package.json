@@ -76,6 +76,8 @@
     "@tiptap/react": "^2.26.1",
     "@tiptap/starter-kit": "^2.26.1",
     "@tiptap/suggestion": "^2.26.1",
+    "@types/dompurify": "^3.2.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@xyflow/react": "^12.8.4",
     "ai": "^5.0.26",
     "bcrypt-ts": "^7.1.0",
@@ -87,6 +89,7 @@
     "consola": "^3.4.2",
     "date-fns": "^4.1.0",
     "deepmerge": "^4.3.1",
+    "dompurify": "^3.2.6",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.41.0",
     "emoji-picker-react": "^4.13.2",
@@ -109,6 +112,7 @@
     "react-dom": "^19.1.1",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.9",
+    "react-syntax-highlighter": "^15.6.6",
     "recharts": "^2.15.4",
     "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
@@ -147,12 +151,9 @@
     "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.{js,json,mjs,ts,yaml,tsx,css}": [
-      "pnpm format",
-      "pnpm lint:fix"
-    ]
+    "*.{js,json,mjs,ts,yaml,tsx,css}": ["pnpm format", "pnpm lint:fix"]
   },
-  "packageManager": "pnpm@10.2.1",
+  "packageManager": "pnpm@10.15.1",
   "engines": {
     "node": ">=18"
   },

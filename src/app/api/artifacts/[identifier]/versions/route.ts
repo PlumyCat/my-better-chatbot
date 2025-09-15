@@ -9,9 +9,9 @@ const logger = globalLogger.withDefaults({
 });
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     identifier: string;
-  };
+  }>;
 }
 
 /**
@@ -25,27 +25,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { identifier } = context.params;
+    const { identifier } = await context.params;
     const { searchParams } = new URL(request.url);
-    const conversationId = searchParams.get('conversationId');
+    const conversationId = searchParams.get("conversationId");
 
     if (!conversationId) {
-      return Response.json({ error: 'conversationId is required' }, { status: 400 });
+      return Response.json(
+        { error: "conversationId is required" },
+        { status: 400 },
+      );
     }
 
     // TODO: Add authorization check to ensure user owns the conversation
 
-    const versions = await artifactRepository.getAllVersions(conversationId, identifier);
+    const versions = await artifactRepository.getAllVersions(
+      conversationId,
+      identifier,
+    );
 
     if (versions.length === 0) {
-      return Response.json({ error: 'Artifact not found' }, { status: 404 });
+      return Response.json({ error: "Artifact not found" }, { status: 404 });
     }
 
-    logger.info(`Retrieved ${versions.length} versions for artifact: ${identifier}`);
+    logger.info(
+      `Retrieved ${versions.length} versions for artifact: ${identifier}`,
+    );
 
-    return Response.json({ 
+    return Response.json({
       identifier,
-      versions: versions.map(v => ({
+      versions: versions.map((v) => ({
         version: v.version,
         title: v.title,
         language: v.language,
