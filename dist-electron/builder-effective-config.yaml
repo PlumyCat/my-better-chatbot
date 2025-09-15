@@ -1,0 +1,47 @@
+directories:
+  output: dist-electron
+  buildResources: build
+appId: com.betterchatbot.app
+productName: Better Chatbot
+files:
+  - filter:
+      - .next/standalone/**/*
+      - .next/static/**/*
+      - public/**/*
+      - electron/**/*
+      - '!electron-builder.json'
+      - '!**/*.map'
+      - '!**/node_modules/**/*'
+extraResources:
+  - from: .next/standalone
+    to: app
+    filter:
+      - '**/*'
+  - from: .next/static
+    to: app/.next/static
+    filter:
+      - '**/*'
+  - from: public
+    to: app/public
+    filter:
+      - '**/*'
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - ia32
+  icon: build/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Better Chatbot
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+linux:
+  target: AppImage
+  icon: build
+electronVersion: 38.1.0

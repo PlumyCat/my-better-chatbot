@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
-const BUILD_OUTPUT = process.env.NEXT_STANDALONE_OUTPUT
-  ? "standalone"
-  : undefined;
+const BUILD_OUTPUT =
+  process.env.NEXT_STANDALONE_OUTPUT || process.env.ELECTRON_BUILD
+    ? "standalone"
+    : undefined;
 
 export default () => {
   const nextConfig: NextConfig = {
@@ -18,6 +19,11 @@ export default () => {
     experimental: {
       taint: true,
     },
+    // Configuration pour Electron
+    images: {
+      unoptimized: process.env.ELECTRON_BUILD === "true",
+    },
+    assetPrefix: process.env.ELECTRON_BUILD ? "." : "",
   };
   const withNextIntl = createNextIntlPlugin();
   return withNextIntl(nextConfig);
