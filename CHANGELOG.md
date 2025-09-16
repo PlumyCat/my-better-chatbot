@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0 (2025-09-16)
+
+
+### Features
+
+* implement artifacts MVP - milestones 0-3 ([e2805fb](https://github.com/PlumyCat/my-better-chatbot/commit/e2805fbf53921079068e99444e01f84029c40d33))
+* implement Milestone 4 - database persistence and versioning ([1724d4b](https://github.com/PlumyCat/my-better-chatbot/commit/1724d4b5c8538fc119c16fe0ccacb5bddc1778b5))
+* implement Milestone 5 - API endpoints for artifacts ([427d620](https://github.com/PlumyCat/my-better-chatbot/commit/427d62096b49fd16419071fce50b30fbb4390b61))
+
 ## [1.21.0](https://github.com/cgoinglove/better-chatbot/compare/v1.20.2...v1.21.0) (2025-08-24)
 
 
